@@ -1,0 +1,22 @@
+[
+   {
+      "directory" : "D:/ccs_workspace/mcasp/mcasp_dsp/Debug",
+      "command"   : "clang++ -I\"D:/ccs_workspace/mcasp/mcasp_dsp\" -I\"D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/hw\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/c674x/c6748\" -Dc6748 -xc",
+      "file"      : "D:/ccs_workspace/mcasp/mcasp_dsp/mcaspPlayBk_prerecorded.c"
+   },
+   {
+      "directory" : "D:/ccs_workspace/mcasp/mcasp_dsp/Debug",
+      "command"   : "clang++ -I\"D:/ccs_workspace/mcasp/mcasp_dsp\" -I\"D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/hw\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/c674x/c6748\" -Dc6748 -xc",
+      "file"      : "D:/ccs_workspace/mcasp/mcasp_dsp/aic31.c"
+   },
+   {
+      "directory" : "D:/ccs_workspace/mcasp/mcasp_dsp/Debug",
+      "command"   : "clang++ -I\"D:/ccs_workspace/mcasp/mcasp_dsp\" -I\"D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/hw\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/c674x/c6748\" -Dc6748 -xc",
+      "file"      : "D:/ccs_workspace/mcasp/mcasp_dsp/codecif.c"
+   },
+   {
+      "directory" : "D:/ccs_workspace/mcasp/mcasp_dsp/Debug",
+      "command"   : "clang++ -I\"D:/ccs_workspace/mcasp/mcasp_dsp\" -I\"D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/hw\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/\" -I\"C:/Program Files (x86)/Texas Instruments/pdk_C6748_2_0_0_0/C6748_StarterWare_1_20_03_03/include/c674x/c6748\" -Dc6748 -xc",
+      "file"      : "D:/ccs_workspace/mcasp/mcasp_dsp/dsp_filter.c"
+   }
+]
