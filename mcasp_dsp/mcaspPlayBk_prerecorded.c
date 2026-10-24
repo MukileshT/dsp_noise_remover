@@ -610,8 +610,8 @@ int main(void)
     */
     /*
      * Two-pass playback:
-     * Pass 0: prerecorded audio with added test noise.
-     * Pass 1: the same source with test noise added, then FIR filtered.
+     * Pass 0: prerecorded (noisy) audio, unprocessed.
+     * Pass 1: same audio through the 4 kHz low-pass FIR.
      * The audio array is expected to contain mono signed 16-bit PCM.
      */
     {
@@ -654,8 +654,7 @@ int main(void)
                     if (audioPos < AUDIO_SAMPLE_COUNT)
                     {
                         float x = (float)audio_samples[audioPos++] / 32768.0f;
-                        y = dsp_add_test_noise(x);
-                        if (pass == 1u) y = dsp_voice_filter(y);
+                        y = (pass == 0u) ? x : dsp_voice_filter(x);
                     }
 
                     if (y > 0.999969f) y = 0.999969f;

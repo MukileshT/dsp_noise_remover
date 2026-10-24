@@ -13,11 +13,6 @@ dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_
 dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/machine/_limits.h
 dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/mathf.h
 dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/mathl.h
-dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/stdint.h
-dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/_stdint40.h
-dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/sys/stdint.h
-dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/machine/_stdint.h
-dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/sys/_stdint.h
 dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/string.h
 dsp_filter.obj: D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/xlocale/_string.h
 dsp_filter.obj: ../dsp_filter.h
@@ -47,16 +42,6 @@ D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/includ
 D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/mathf.h:
 
 D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/mathl.h:
-
-D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/stdint.h:
-
-D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/_stdint40.h:
-
-D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/sys/stdint.h:
-
-D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/machine/_stdint.h:
-
-D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/sys/_stdint.h:
 
 D:/MyFolder/Apps/Engineering/TI/ccs/tools/compiler/ti-cgt-c6000_8.5.0.LTS/include/string.h:
 
