@@ -617,7 +617,6 @@ int main(void)
     {
         unsigned int audioPos = 0;
         unsigned int pass = 0; /* 0 = noisy, 1 = noisy then filtered */
-        float noisePhase = 0.0f;
 
         while (1)
         {
@@ -635,48 +634,38 @@ int main(void)
                 lastSentTxBuf = (lastSentTxBuf + 1) % NUM_BUF;
                 txSamples = (short *)txBufPtr[lastSentTxBuf];
 
-                for (i = 0; i < NUM_SAMPLES_PER_AUDIO_BUF; ++i)
+                /*
+                ** One 32-bit DMA element feeds ONE McASP slot (L or R), so a
+                ** stereo frame needs 2 elements (4 shorts). A buffer of
+                ** NUM_SAMPLES_PER_AUDIO_BUF elements therefore holds only
+                ** NUM_SAMPLES_PER_AUDIO_BUF/2 audio samples.
+                */
+                for (i = 0; i < NUM_SAMPLES_PER_AUDIO_BUF / 2u; ++i)
                 {
-                    float x, noisy, y;
+                    float y = 0.0f;
                     short s;
 
+                    if (audioPos >= AUDIO_SAMPLE_COUNT && pass == 0u)
+                    {
+                        pass = 1u;          /* noisy pass done -> filtered pass */
+                        audioPos = 0u;
+                        dsp_init();
+                    }
                     if (audioPos < AUDIO_SAMPLE_COUNT)
                     {
-                        x = (float)audio_samples[audioPos++] / 32768.0f;
-                        noisy = dsp_add_test_noise(x);
-                        y = (pass == 0u) ? noisy : dsp_voice_filter(noisy);
-                    }
-                    else
-                    {
-                        /* Move to the processed pass after the noisy pass. */
-                        if (pass == 0u)
-                        {
-                            pass = 1u;
-                            audioPos = 0u;
-                            dsp_init();
-                            x = (float)audio_samples[audioPos++] / 32768.0f;
-
-
-                            float tone = 0.15f * sinf(noisePhase);
-                            noisePhase += 2.0f * 3.14159265358979323846f * 4000.0f / AUDIO_SAMPLE_RATE;
-                            if (noisePhase >= 2.0f * 3.14159265358979323846f)
-                                noisePhase -= 2.0f * 3.14159265358979323846f;
-                            noisy = x + tone;
-
-
-                            y = x;
-                        }
-                        else
-                        {
-                            y = 0.0f; /* Finished both passes. */
-                        }
+                        float x = (float)audio_samples[audioPos++] / 32768.0f;
+                        y = dsp_add_test_noise(x);
+                        if (pass == 1u) y = dsp_voice_filter(y);
                     }
 
                     if (y > 0.999969f) y = 0.999969f;
                     if (y < -1.0f) y = -1.0f;
                     s = (short)(y * 32767.0f);
-                    txSamples[2u * i] = s;
-                    txSamples[2u * i + 1u] = s;
+
+                    txSamples[4u * i]      = s;   /* L slot */
+                    txSamples[4u * i + 1u] = s;
+                    txSamples[4u * i + 2u] = s;   /* R slot */
+                    txSamples[4u * i + 3u] = s;
                 }
 
                 BufferTxDMAActivate(lastSentTxBuf,

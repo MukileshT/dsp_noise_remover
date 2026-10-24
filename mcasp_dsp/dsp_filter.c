@@ -1,4 +1,3 @@
-
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
@@ -26,6 +25,7 @@ static uint32_t rng_state = 2463534242u;
 static float ps_avg = 1.0e-6f;
 static float pn_avg = 1.0e-6f;
 static float pw_alpha;
+static float snr_linear;
 
 /* Design an FIR band-pass filter using a Hamming window. */
 static void design_bandpass(float *h, float f1, float f2, float fs)
@@ -152,15 +152,13 @@ void dsp_init(void)
     pn_avg = 1.0e-6f;
 
     rng_state = 2463534242u;
+    snr_linear = (float)pow(10.0, (double)TARGET_SNR_DB / 10.0);
 }
 
 /* Optional test-noise generator. Do not use this on audio
    that already contains noise unless you want more noise. */
 float dsp_add_test_noise(float x)
 {
-    const float snr_linear =
-        (float)pow(10.0, (double)TARGET_SNR_DB / 10.0);
-
     float noise = fir_run(&noise_fir, rand_gauss());
     float gain;
 
