@@ -65,13 +65,8 @@
 /* Word size to send/receive data. Word size <= Slot size */
 #define WORD_SIZE                             (16u)
 
-/*
- * Run the codec at 48 kHz, a common stable LCDK AIC31 rate.
- * The source PCM and FIR remain at 16 kHz, so each processed source
- * sample is held for three output frames (48 kHz / 16 kHz = 3).
- */
-#define SAMPLING_RATE                         (48000u)
-#define UPSAMPLE_FACTOR                       (3u)
+/* Sampling Rate which will be used by both transmit and receive sections */
+#define SAMPLING_RATE                         (16000u)  /* Use only if audio_samples.h contains 8 kHz PCM */
 
 /* Number of channels, L & R */
 #define NUM_I2S_CHANNELS                      (2u) 
@@ -183,6 +178,10 @@ static volatile unsigned int nxtBufToRcv = 0;
 ** The RX buffer which filled latest.
 */
 static volatile unsigned int lastFullRxBuf = 0;
+
+/* Monotonic RX-DMA completion count used to pace the playback loop. */
+static volatile unsigned int rxBlocksProduced = 0;
+static volatile unsigned int rxBlocksConsumed = 0;
 
 /*
 ** The offset of the paRAM ID, from the starting of the paRAM set.
@@ -407,13 +406,10 @@ static void McASPI2SConfigure(void)
                           0x00, 0xFF);
 
     /* configure the clock for transmitter */
-    /* Configure the clock for transmitter */
-/* Keep external clocking for now; do not change clock source. */
-    McASPTxClkCfg(SOC_MCASP_0_CTRL_REGS,
-                MCASP_TX_CLK_EXTERNAL, 0, 0);
-    McASPTxClkPolaritySet(SOC_MCASP_0_CTRL_REGS,
-                        MCASP_TX_CLK_POL_FALL_EDGE);
-    McASPTxClkCheckConfig(SOC_MCASP_0_CTRL_REGS, MCASP_TX_CLKCHCK_DIV32, 0x00, 0xFF);
+    McASPTxClkCfg(SOC_MCASP_0_CTRL_REGS, MCASP_TX_CLK_EXTERNAL, 0, 0);
+    McASPTxClkPolaritySet(SOC_MCASP_0_CTRL_REGS, MCASP_TX_CLK_POL_FALL_EDGE); 
+    McASPTxClkCheckConfig(SOC_MCASP_0_CTRL_REGS, MCASP_TX_CLKCHCK_DIV32,
+                          0x00, 0xFF);
  
     /* Enable synchronization of RX and TX sections  */  
     McASPTxRxClkSyncEnable(SOC_MCASP_0_CTRL_REGS);
@@ -519,7 +515,7 @@ static void I2SDataTxRxActivate(void)
 /*
 ** Activates the DMA transfer for a parameterset from the given buffer.
 */
-static void BufferTxDMAActivate(unsigned int txBuf, unsigned short numSamples,
+void BufferTxDMAActivate(unsigned int txBuf, unsigned short numSamples,
                          unsigned short parId, unsigned short linkPar)
 {
     EDMA3CCPaRAMEntry paramSet;
@@ -613,107 +609,74 @@ int main(void)
     ** buffer is to be sent. This has to be mapped to proper paRAM set.
     */
     /*
-     * Play original 16-kHz PCM, pause for one second, then replay the
-     * FIR-filtered PCM. The codec runs at 48 kHz, so each 16-kHz source
-     * sample (and each filtered sample) is repeated three output frames.
-     * This preserves the recording pitch/duration when the hardware clock
-     * is 48 kHz. The FIR itself still processes at 16 kHz.
+     * Two-pass playback:
+     * Pass 0: prerecorded audio with added test noise.
+     * Pass 1: the same source with test noise added, then FIR filtered.
+     * The audio array is expected to contain mono signed 16-bit PCM.
      */
     {
-        unsigned int audioPos = 0u;
-        unsigned int pass = 0u;       /* 0 original, 1 gap, 2 filtered */
-        unsigned int gapRemaining = 0u;
-        unsigned int repeatRemaining = 0u;
-        float heldOutput = 0.0f;
-        const unsigned int gapSamples = 48000u; /* one second at 48 kHz */
+        unsigned int audioPos = 0;
+        unsigned int pass = 0; /* 0 = noisy, 1 = noisy then filtered */
+        float noisePhase = 0.0f;
 
         while (1)
         {
-            if (lastFullRxBuf != lastSentTxBuf)
+            if (rxBlocksProduced != rxBlocksConsumed)
             {
+                /* Consume exactly one completed RX-DMA pacing event. */
+                rxBlocksConsumed++;
                 unsigned int i;
                 short *txSamples;
 
                 parToSend = PAR_TX_START + (parOffTxToSend % NUM_PAR);
-                parOffTxToSend = (parOffTxToSend + 1u) % NUM_PAR;
+                parOffTxToSend = (parOffTxToSend + 1) % NUM_PAR;
                 parToLink = PAR_TX_START + parOffTxToSend;
 
-                lastSentTxBuf = (lastSentTxBuf + 1u) % NUM_BUF;
+                lastSentTxBuf = (lastSentTxBuf + 1) % NUM_BUF;
                 txSamples = (short *)txBufPtr[lastSentTxBuf];
 
-                for (i = 0u; i < NUM_SAMPLES_PER_AUDIO_BUF; ++i)
+                for (i = 0; i < NUM_SAMPLES_PER_AUDIO_BUF; ++i)
                 {
-                    float y = 0.0f;
-                    short sampleOut;
+                    float x, noisy, y;
+                    short s;
 
-                    if (pass == 0u)
+                    if (audioPos < AUDIO_SAMPLE_COUNT)
                     {
-                        if (repeatRemaining == 0u)
-                        {
-                            if (audioPos < AUDIO_SAMPLE_COUNT)
-                            {
-                                heldOutput = (float)audio_samples[audioPos++] / 32768.0f;
-                                repeatRemaining = UPSAMPLE_FACTOR;
-                            }
-                            else
-                            {
-                                pass = 1u;
-                                gapRemaining = gapSamples;
-                                heldOutput = 0.0f;
-                            }
-                        }
-
-                        if (pass == 0u && repeatRemaining > 0u)
-                        {
-                            y = heldOutput;
-                            --repeatRemaining;
-                        }
+                        x = (float)audio_samples[audioPos++] / 32768.0f;
+                        noisy = dsp_add_test_noise(x);
+                        y = (pass == 0u) ? noisy : dsp_voice_filter(noisy);
                     }
-
-                    if (pass == 1u)
+                    else
                     {
-                        y = 0.0f;
-                        if (gapRemaining > 0u)
+                        /* Move to the processed pass after the noisy pass. */
+                        if (pass == 0u)
                         {
-                            --gapRemaining;
-                        }
-                        else
-                        {
-                            pass = 2u;
+                            pass = 1u;
                             audioPos = 0u;
-                            repeatRemaining = 0u;
-                            heldOutput = 0.0f;
                             dsp_init();
-                        }
-                    }
+                            x = (float)audio_samples[audioPos++] / 32768.0f;
 
-                    if (pass == 2u)
-                    {
-                        if (repeatRemaining == 0u && audioPos < AUDIO_SAMPLE_COUNT)
-                        {
-                            float x = (float)audio_samples[audioPos++] / 32768.0f;
-                            heldOutput = dsp_voice_filter(x);
-                            repeatRemaining = UPSAMPLE_FACTOR;
-                        }
 
-                        if (repeatRemaining > 0u)
-                        {
-                            y = heldOutput;
-                            --repeatRemaining;
+                            float tone = 0.15f * sinf(noisePhase);
+                            noisePhase += 2.0f * 3.14159265358979323846f * 4000.0f / AUDIO_SAMPLE_RATE;
+                            if (noisePhase >= 2.0f * 3.14159265358979323846f)
+                                noisePhase -= 2.0f * 3.14159265358979323846f;
+                            noisy = x + tone;
+
+
+                            y = x;
                         }
                         else
                         {
-                            y = 0.0f;
+                            y = 0.0f; /* Finished both passes. */
                         }
                     }
 
                     if (y > 0.999969f) y = 0.999969f;
                     if (y < -1.0f) y = -1.0f;
-                    sampleOut = (short)(y * 32767.0f);
-
-                    /* Mono PCM duplicated into left and right I2S slots. */
-                    txSamples[2u * i] = sampleOut;
-                    txSamples[2u * i + 1u] = sampleOut;
+                    s = (short)(y * 32767.0f);
+                    txSamples[2u * i] = s;
+                    txSamples[2u * i + 1u] = s;
                 }
 
                 BufferTxDMAActivate(lastSentTxBuf,
@@ -723,7 +686,7 @@ int main(void)
             }
         }
     }
-}
+}  
 
 /*
 ** Activates the DMA transfer for a parameter set from the given buffer.
@@ -757,6 +720,7 @@ static void McASPRxDMAComplHandler(void)
     ** is completed.
     */
     lastFullRxBuf = (lastFullRxBuf + 1) % NUM_BUF;
+    rxBlocksProduced++;
     nxtParToUpdate =  PAR_RX_START + parOffRcvd;  
     parOffRcvd = (parOffRcvd + 1) % NUM_PAR;
  
