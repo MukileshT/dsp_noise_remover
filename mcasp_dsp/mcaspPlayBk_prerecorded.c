@@ -151,6 +151,9 @@ static void BufferRxDMAActivate(unsigned int rxBuf, unsigned short parId,
 /******************************************************************************
 **                      INTERNAL VARIABLE DEFINITIONS
 ******************************************************************************/
+/* Whole clip, low-pass filtered once at startup (no real-time DSP). */
+static short filtered[AUDIO_SAMPLE_COUNT];
+
 static unsigned char loopBuf[NUM_SAMPLES_LOOP_BUF * BYTES_PER_SAMPLE] = {0};
 
 /*
@@ -597,8 +600,18 @@ int main(void)
     /* Configure the McASP for I2S */
     McASPI2SConfigure();
   
-    /* Initialize DSP filter state before audio playback. */
+    /* Filter the whole clip now, before audio starts. */
     dsp_init();
+    {
+        unsigned int k;
+        for (k = 0; k < AUDIO_SAMPLE_COUNT; ++k)
+        {
+            float y = dsp_voice_filter((float)audio_samples[k] / 32768.0f);
+            if (y > 0.999969f) y = 0.999969f;
+            if (y < -1.0f) y = -1.0f;
+            filtered[k] = (short)(y * 32767.0f);
+        }
+    }
 
     /* Activate the audio transmission and reception */
     I2SDataTxRxActivate();
@@ -642,24 +655,19 @@ int main(void)
                 */
                 for (i = 0; i < NUM_SAMPLES_PER_AUDIO_BUF / 2u; ++i)
                 {
-                    float y = 0.0f;
-                    short s;
+                    short s = 0;
 
                     if (audioPos >= AUDIO_SAMPLE_COUNT && pass == 0u)
                     {
                         pass = 1u;          /* noisy pass done -> filtered pass */
                         audioPos = 0u;
-                        dsp_init();
                     }
                     if (audioPos < AUDIO_SAMPLE_COUNT)
                     {
-                        float x = (float)audio_samples[audioPos++] / 32768.0f;
-                        y = (pass == 0u) ? x : dsp_voice_filter(x);
+                        s = (pass == 0u) ? audio_samples[audioPos]
+                                         : filtered[audioPos];
+                        audioPos++;
                     }
-
-                    if (y > 0.999969f) y = 0.999969f;
-                    if (y < -1.0f) y = -1.0f;
-                    s = (short)(y * 32767.0f);
 
                     txSamples[4u * i]      = s;   /* L slot */
                     txSamples[4u * i + 1u] = s;
