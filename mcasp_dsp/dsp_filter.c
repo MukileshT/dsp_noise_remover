@@ -1,3 +1,4 @@
+
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
@@ -7,48 +8,77 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-typedef struct {
+#ifndef TARGET_SNR_DB
+#define TARGET_SNR_DB 5.0f
+#endif
+
+typedef struct
+{
     float h[NTAPS];
-    float buf[2 * NTAPS];   /* history stored twice -> no modulo in the MAC loop */
-    int   pos;
+    float buf[2 * NTAPS];
+    int pos;
 } fir_t;
 
-st  atic fir_t voice_fir;     /* 300-3400 Hz, the actual filter               */
-static fir_t noise_fir;     /* 4500-7000 Hz, shapes the test noise          */
+static fir_t voice_fir;
+static fir_t noise_fir;
 
 static uint32_t rng_state = 2463534242u;
-static float    ps_avg = 1e-6f, pn_avg = 1e-6f;   /* running power estimates   */
-static float    pw_alpha;
+static float ps_avg = 1.0e-6f;
+static float pn_avg = 1.0e-6f;
+static float pw_alpha;
 
-/* ---------- fir1(512,[f1 f2]/(Fs/2),'bandpass') equivalent (Hamming) ---------- */
-static void design_bandpass(float *h, double f1, double f2, double fs)
+/* Design an FIR band-pass filter using a Hamming window. */
+static void design_bandpass(float *h, float f1, float f2, float fs)
 {
-    const int    M  = NTAPS - 1;              /* order = 512 */
+    int n;
+    const int M = NTAPS - 1;
     const double w1 = 2.0 * M_PI * f1 / fs;
     const double w2 = 2.0 * M_PI * f2 / fs;
-    double tmp[NTAPS];
-    int n;
+    double temp[NTAPS];
 
-    for (n = 0; n < NTAPS; n++) {
-        double m   = n - 0.5 * M;             /* symmetric about the centre   */
-        double ideal = (fabs(m) < 1e-9) ? (w2 - w1) / M_PI
-                                        : (sin(w2 * m) - sin(w1 * m)) / (M_PI * m);
-        double win = 0.54 - 0.46 * cos(2.0 * M_PI * n / M);   /* hamming(513) */
-        tmp[n] = ideal * win;
-    }
-    /* fir1 scaling: unity gain at the centre of the pass band */
+    for (n = 0; n < NTAPS; n++)
     {
-        double w0 = 0.5 * (w1 + w2), re = 0.0, im = 0.0;
-        for (n = 0; n < NTAPS; n++) {
-            re += tmp[n] * cos(w0 * n);
-            im -= tmp[n] * sin(w0 * n);
+        double m = (double)n - (double)M / 2.0;
+        double ideal;
+        double window;
+
+        if (fabs(m) < 1.0e-12)
+        {
+            ideal = (w2 - w1) / M_PI;
         }
-        double g = sqrt(re * re + im * im);
-        for (n = 0; n < NTAPS; n++) h[n] = (float)(tmp[n] / g);
+        else
+        {
+            ideal = (sin(w2 * m) - sin(w1 * m)) / (M_PI * m);
+        }
+
+        window = 0.54 - 0.46 * cos(2.0 * M_PI * n / M);
+        temp[n] = ideal * window;
+    }
+
+    /* Normalize gain at the centre of the passband. */
+    {
+        double w0 = 0.5 * (w1 + w2);
+        double re = 0.0;
+        double im = 0.0;
+        double gain;
+
+        for (n = 0; n < NTAPS; n++)
+        {
+            re += temp[n] * cos(w0 * n);
+            im -= temp[n] * sin(w0 * n);
+        }
+
+        gain = sqrt(re * re + im * im);
+
+        if (gain < 1.0e-12)
+            gain = 1.0;
+
+        for (n = 0; n < NTAPS; n++)
+            h[n] = (float)(temp[n] / gain);
     }
 }
 
-/* ---------- FIR with circular buffer written twice ---------- */
+/* Run the FIR using a duplicated circular buffer. */
 static float fir_run(fir_t *f, float x)
 {
     const float *restrict h = f->h;
@@ -57,63 +87,120 @@ static float fir_run(fir_t *f, float x)
     int i;
 
     f->pos = (f->pos == 0) ? (NTAPS - 1) : (f->pos - 1);
-    f->buf[f->pos]          = x;
-    f->buf[f->pos + NTAPS]  = x;
-    p = &f->buf[f->pos];                      /* p[0] newest ... p[NTAPS-1] oldest */
 
-#pragma MUST_ITERATE(NTAPS, NTAPS)
+    f->buf[f->pos] = x;
+    f->buf[f->pos + NTAPS] = x;
+
+    p = &f->buf[f->pos];
+
     for (i = 0; i < NTAPS; i++)
         acc += h[i] * p[i];
+
     return acc;
 }
 
-/* ---------- white Gaussian-ish noise (replacement for randn) ---------- */
-static float rand_uniform(void)               /* xorshift32 -> [-1,1) */
+/* Pseudo-random uniform noise in approximately [-1, 1). */
+static float rand_uniform(void)
 {
     rng_state ^= rng_state << 13;
     rng_state ^= rng_state >> 17;
     rng_state ^= rng_state << 5;
-    return (float)((int32_t)rng_state) * (1.0f / 2147483648.0f);
-}
-static float rand_gauss(void)                 /* sum of 12 uniforms, unit variance */
-{
-    float s = 0.0f; int i;
-    for (i = 0; i < 12; i++) s += 0.5f * (rand_uniform() + 1.0f);
-    return s - 6.0f;
+
+    return (float)((int32_t)rng_state) *
+           (1.0f / 2147483648.0f);
 }
 
-/* ---------- public API ---------- */
+/* Approximate Gaussian noise. */
+static float rand_gauss(void)
+{
+    float sum = 0.0f;
+    int i;
+
+    for (i = 0; i < 12; i++)
+        sum += 0.5f * (rand_uniform() + 1.0f);
+
+    return sum - 6.0f;
+}
+
+/* Call once before processing audio. */
 void dsp_init(void)
 {
-    memset(&voice_fir, 0, sizeof voice_fir);
-    memset(&noise_fir, 0, sizeof noise_fir);
-    design_bandpass(voice_fir.h, VOICE_LO_HZ, VOICE_HI_HZ, FS_HZ);
-    design_bandpass(noise_fir.h, NOISE_LO_HZ, NOISE_HI_HZ, FS_HZ);
-    pw_alpha = (float)(1.0 - 1.0 / (0.5 * FS_HZ));   /* ~0.5 s power averaging */
-    ps_avg = pn_avg = 1e-6f;
+    memset(&voice_fir, 0, sizeof(voice_fir));
+    memset(&noise_fir, 0, sizeof(noise_fir));
+
+    voice_fir.pos = 0;
+    noise_fir.pos = 0;
+
+    design_bandpass(
+        voice_fir.h,
+        VOICE_LO_HZ,
+        VOICE_HI_HZ,
+        FS_HZ
+    );
+
+    design_bandpass(
+        noise_fir.h,
+        NOISE_LO_HZ,
+        NOISE_HI_HZ,
+        FS_HZ
+    );
+
+    /* Approximately 0.5-second running power averaging. */
+    pw_alpha = 1.0f - 1.0f / (0.5f * FS_HZ);
+
+    ps_avg = 1.0e-6f;
+    pn_avg = 1.0e-6f;
+
+    rng_state = 2463534242u;
 }
 
-/* MATLAB: n = nh*sqrt(sum(s.^2)/(sum(nh.^2)*10^(snr/10))); noisy = s + n;
- * The whole-file sums become running averages, so it works sample by sample. */
+/* Optional test-noise generator. Do not use this on audio
+   that already contains noise unless you want more noise. */
 float dsp_add_test_noise(float x)
 {
-    const float snr_lin = (float)pow(10.0, TARGET_SNR_DB / 10.0);
-    float nh = fir_run(&noise_fir, rand_gauss());
+    const float snr_linear =
+        (float)pow(10.0, (double)TARGET_SNR_DB / 10.0);
+
+    float noise = fir_run(&noise_fir, rand_gauss());
     float gain;
 
-    ps_avg = pw_alpha * ps_avg + (1.0f - pw_alpha) * x  * x;
-    pn_avg = pw_alpha * pn_avg + (1.0f - pw_alpha) * nh * nh;
-    gain   = sqrtf(ps_avg / (pn_avg * snr_lin + 1e-20f));
-    return x + gain * nh;
+    ps_avg = pw_alpha * ps_avg +
+             (1.0f - pw_alpha) * x * x;
+
+    pn_avg = pw_alpha * pn_avg +
+             (1.0f - pw_alpha) * noise * noise;
+
+    gain = sqrtf(ps_avg / (pn_avg * snr_linear + 1.0e-20f));
+
+    return x + gain * noise;
 }
 
-float dsp_voice_filter(float x) { return fir_run(&voice_fir, x); }
+/* Filter one input sample. Call dsp_init() first. */
+float dsp_voice_filter(float x)
+{
+    return fir_run(&voice_fir, x);
+}
 
-void dsp_process_block(const float *in, float *out, int n, int add_noise)
+/* Process a block of floating-point samples. */
+void dsp_process_block(
+    const float *in,
+    float *out,
+    int n,
+    int add_noise
+)
 {
     int i;
-    for (i = 0; i < n; i++) {
-        float v = add_noise ? dsp_add_test_noise(in[i]) : in[i];
-        out[i]  = dsp_voice_filter(v);
+
+    if (in == 0 || out == 0 || n <= 0)
+        return;
+
+    for (i = 0; i < n; i++)
+    {
+        float sample = in[i];
+
+        if (add_noise)
+            sample = dsp_add_test_noise(sample);
+
+        out[i] = dsp_voice_filter(sample);
     }
 }
