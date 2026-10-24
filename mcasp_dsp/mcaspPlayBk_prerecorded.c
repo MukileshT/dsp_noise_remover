@@ -65,8 +65,13 @@
 /* Word size to send/receive data. Word size <= Slot size */
 #define WORD_SIZE                             (16u)
 
-/* Sampling rate used by the codec and the supplied audio_samples.h. */
-#define SAMPLING_RATE                         (AUDIO_SAMPLE_RATE)
+/*
+ * Run the codec at 48 kHz, a common stable LCDK AIC31 rate.
+ * The source PCM and FIR remain at 16 kHz, so each processed source
+ * sample is held for three output frames (48 kHz / 16 kHz = 3).
+ */
+#define SAMPLING_RATE                         (48000u)
+#define UPSAMPLE_FACTOR                       (3u)
 
 /* Number of channels, L & R */
 #define NUM_I2S_CHANNELS                      (2u) 
@@ -608,17 +613,19 @@ int main(void)
     ** buffer is to be sent. This has to be mapped to proper paRAM set.
     */
     /*
-     * Two-pass playback:
-     * Pass 0: play the supplied PCM exactly as stored.
-     * Pass 1: replay the same PCM through the voice FIR filter.
-     * Then transmit silence. Do not add synthetic noise here: the source
-     * recording is already noisy, and this keeps playback deterministic.
+     * Play original 16-kHz PCM, pause for one second, then replay the
+     * FIR-filtered PCM. The codec runs at 48 kHz, so each 16-kHz source
+     * sample (and each filtered sample) is repeated three output frames.
+     * This preserves the recording pitch/duration when the hardware clock
+     * is 48 kHz. The FIR itself still processes at 16 kHz.
      */
     {
         unsigned int audioPos = 0u;
-        unsigned int pass = 0u; /* 0 = original, 1 = FIR-filtered, 2 = done */
+        unsigned int pass = 0u;       /* 0 original, 1 gap, 2 filtered */
         unsigned int gapRemaining = 0u;
-        const unsigned int gapSamples = AUDIO_SAMPLE_RATE; /* 1 second */
+        unsigned int repeatRemaining = 0u;
+        float heldOutput = 0.0f;
+        const unsigned int gapSamples = 48000u; /* one second at 48 kHz */
 
         while (1)
         {
@@ -636,63 +643,77 @@ int main(void)
 
                 for (i = 0u; i < NUM_SAMPLES_PER_AUDIO_BUF; ++i)
                 {
-                    float x = 0.0f;
                     float y = 0.0f;
-                    short s;
+                    short sampleOut;
 
                     if (pass == 0u)
                     {
-                        /* Pass 1: play the original noisy recording. */
-                        if (audioPos < AUDIO_SAMPLE_COUNT)
+                        if (repeatRemaining == 0u)
                         {
-                            x = (float)audio_samples[audioPos++] / 32768.0f;
-                            y = x;
+                            if (audioPos < AUDIO_SAMPLE_COUNT)
+                            {
+                                heldOutput = (float)audio_samples[audioPos++] / 32768.0f;
+                                repeatRemaining = UPSAMPLE_FACTOR;
+                            }
+                            else
+                            {
+                                pass = 1u;
+                                gapRemaining = gapSamples;
+                                heldOutput = 0.0f;
+                            }
                         }
-                        else
+
+                        if (pass == 0u && repeatRemaining > 0u)
                         {
-                            pass = 1u;
-                            audioPos = 0u;
-                            gapRemaining = gapSamples;
-                            y = 0.0f;
+                            y = heldOutput;
+                            --repeatRemaining;
                         }
                     }
-                    else if (pass == 1u)
+
+                    if (pass == 1u)
                     {
-                        /* One second of silence separates the two playbacks. */
+                        y = 0.0f;
                         if (gapRemaining > 0u)
                         {
                             --gapRemaining;
-                            y = 0.0f;
                         }
                         else
                         {
-                            dsp_init();
                             pass = 2u;
+                            audioPos = 0u;
+                            repeatRemaining = 0u;
+                            heldOutput = 0.0f;
+                            dsp_init();
                         }
                     }
 
                     if (pass == 2u)
                     {
-                        /* Pass 2: play the same recording through the voice FIR. */
-                        if (audioPos < AUDIO_SAMPLE_COUNT)
+                        if (repeatRemaining == 0u && audioPos < AUDIO_SAMPLE_COUNT)
                         {
-                            x = (float)audio_samples[audioPos++] / 32768.0f;
-                            y = dsp_voice_filter(x);
+                            float x = (float)audio_samples[audioPos++] / 32768.0f;
+                            heldOutput = dsp_voice_filter(x);
+                            repeatRemaining = UPSAMPLE_FACTOR;
+                        }
+
+                        if (repeatRemaining > 0u)
+                        {
+                            y = heldOutput;
+                            --repeatRemaining;
                         }
                         else
                         {
-                            /* Both playbacks are complete: output silence. */
                             y = 0.0f;
                         }
                     }
 
                     if (y > 0.999969f) y = 0.999969f;
                     if (y < -1.0f) y = -1.0f;
-                    s = (short)(y * 32767.0f);
+                    sampleOut = (short)(y * 32767.0f);
 
-                    /* Mono PCM is duplicated into the left and right I2S slots. */
-                    txSamples[2u * i] = s;
-                    txSamples[2u * i + 1u] = s;
+                    /* Mono PCM duplicated into left and right I2S slots. */
+                    txSamples[2u * i] = sampleOut;
+                    txSamples[2u * i + 1u] = sampleOut;
                 }
 
                 BufferTxDMAActivate(lastSentTxBuf,

@@ -4,7 +4,7 @@
 #define DSP_FILTER_H
 
 #define FS_HZ        16000.0     /* MUST equal the codec sampling rate */
-#define NTAPS        513         /* fir1 order 512 -> 513 taps         */
+#define NTAPS        129         /* fir1 order 512 -> 513 taps         */
 #define VOICE_LO_HZ  300.0
 #define VOICE_HI_HZ  3400.0
 #define NOISE_LO_HZ  4500.0

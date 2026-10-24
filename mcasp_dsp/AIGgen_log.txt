@@ -1,0 +1,72 @@
+***Loaded configuration from file C:\Program Files (x86)\Texas Instruments\c6sdk_02_00_00_00\demos\flash\lcdk\LCDK_AISGen_Config.cfg
+***One or more parameter error must be corrected.
+***One or more parameter error must be corrected.
+***One or more parameter error must be corrected.
+***One or more parameter error must be corrected.
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 293176 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+WARNING: File D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out does not exist. Ignoring insert command.
+***AIS generation aborted. Object reference not set to an instance of an object.
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300832 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input obj
