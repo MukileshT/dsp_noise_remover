@@ -2,7 +2,7 @@
 #define DSP_FILTER_H
 
 #define FS_HZ     16000.0f
-#define NTAPS     127          /* odd, linear-phase FIR */
+#define NTAPS     129          /* odd, symmetric (linear-phase) FIR */
 #define CUTOFF_HZ 4000.0f      /* -6 dB point; stopband starts ~4.2 kHz */
 
 void  dsp_init(void);

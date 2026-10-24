@@ -69,4 +69,76 @@ AIS file generation was successful.
 ***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
 Begining the AIS file generation.
 AIS file being generated for bootmode: NONE.
-Parsing the input obj
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300800 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300896 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300896 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300896 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300896 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300896 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300960 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300960 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300960 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300960 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 301056 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 301056 bytes to file D:\ccs_workspace\mcasp\mcasp_dsp\ais_image.bin
+Begining the AIS file generation.
+AIS file being generated for bootmode: NONE.
+Parsing the input object file, D:\ccs_workspace\mcasp\mcasp_dsp\Debug\mcasp_dsp.out.
+AIS file generation was successful.
+***Wrote 300928 bytes to file D:\ccs_workspace
