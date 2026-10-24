@@ -1,805 +1,411 @@
 /**
- * \file  mcaspPlayBk.c
+ * \file  aic31.c
  *
- * \brief Sample application for McASP. This application loops back the input
- *        at LINE_IN of the EVM to the LINE_OUT of the EVM. 
+ * \brief APIs to configure the AIC31 codec.
  */
 
 /*
-* Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/ 
+* Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 *
-*  Redistribution and use in source and binary forms, with or without 
-*  modification, are permitted provided that the following conditions 
+*  Redistribution and use in source and binary forms, with or without
+*  modification, are permitted provided that the following conditions
 *  are met:
 *
-*    Redistributions of source code must retain the above copyright 
+*    Redistributions of source code must retain the above copyright
 *    notice, this list of conditions and the following disclaimer.
 *
 *    Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the 
-*    documentation and/or other materials provided with the   
+*    notice, this list of conditions and the following disclaimer in the
+*    documentation and/or other materials provided with the
 *    distribution.
 *
 *    Neither the name of Texas Instruments Incorporated nor the names of
 *    its contributors may be used to endorse or promote products derived
 *    from this software without specific prior written permission.
 *
-*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
-*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-*  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
-*  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
-*  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+*  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+*  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+*  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
 *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-*  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
-*  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+*  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+*  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "edma_event.h" 
-#include "interrupt.h"
-#include "soc_C6748.h"
-#include "hw_syscfg0_C6748.h"
-#include "lcdkC6748.h"
 #include "codecif.h"
-#include "mcasp.h"
 #include "aic31.h"
-#include "edma.h"
-#include "psc.h"
-
-#include <string.h>
-#include <math.h>
-#include "audio_samples.h"
-#include "dsp_filter.h"
 
 /******************************************************************************
 **                      INTERNAL MACRO DEFINITIONS
-******************************************************************************/
+*******************************************************************************/
 /*
-** Values which are configurable
+** Register Address for AIC31 Codec
 */
-/* Slot size to send/receive data */
-#define SLOT_SIZE                             (16u)
+#define AIC31_P0_REG0               (0)  /* Page Select  */
+#define AIC31_P0_REG1               (1)  /* Software Reset */
+#define AIC31_P0_REG2               (2)  /* Codec Sample Rate Select */
+#define AIC31_P0_REG3               (3)  /* PLL Programming A */
+#define AIC31_P0_REG4               (4)  /* PLL Programming B */
+#define AIC31_P0_REG5               (5)  /* PLL Programming C */
+#define AIC31_P0_REG6               (6)  /* PLL Programming D */
+#define AIC31_P0_REG7               (7)  /* Codec Datapath Setup */
+#define AIC31_P0_REG8               (8)  /* Audio Serial Data I/f Control A */
+#define AIC31_P0_REG9               (9)  /* Audio Serial Data I/f Control B */
+#define AIC31_P0_REG10              (10) /* Audio Serial Data I/f Control C */
+#define AIC31_P0_REG11              (11) /* Audio Codec Overflow Flag */
+#define AIC31_P0_REG12              (12) /* Audio Codec Digital Filter Ctrl */
+#define AIC31_P0_REG13              (13) /* Headset / Button Press Detect A */
+#define AIC31_P0_REG14              (14) /* Headset / Button Press Detect B */
+#define AIC31_P0_REG15              (15) /* Left ADC PGA Gain Control */
+#define AIC31_P0_REG16              (16) /* Right ADC PGA Gain Control */
+#define AIC31_P0_REG17              (17) /* MIC3L/R to Left ADC Control */
+#define AIC31_P0_REG18              (18) /* MIC3L/R to Right ADC Control */
+#define AIC31_P0_REG19              (19) /* LINE1L to Left ADC Control */
+#define AIC31_P0_REG20              (20) /* LINE2L to Left ADC Control */
+#define AIC31_P0_REG21              (21) /* LINE1R to Left ADC Control */
+#define AIC31_P0_REG22              (22) /* LINE1R to Right ADC Control */
+#define AIC31_P0_REG23              (23) /* LINE2R to Right ADC Control */
+#define AIC31_P0_REG24              (24) /* LINE1L to Right ADC Control */
+#define AIC31_P0_REG25              (25) /* MICBIAS Control */
+#define AIC31_P0_REG26              (26) /* Left AGC Control A */
+#define AIC31_P0_REG27              (27) /* Left AGC Control B */
+#define AIC31_P0_REG28              (28) /* Left AGC Control C */
+#define AIC31_P0_REG29              (29) /* Right AGC Control A */
+#define AIC31_P0_REG30              (30) /* Right AGC Control B */
+#define AIC31_P0_REG31              (31) /* Right AGC Control C */
+#define AIC31_P0_REG32              (32) /* Left AGC Gain */
+#define AIC31_P0_REG33              (33) /* Right AGC Gain */
+#define AIC31_P0_REG34              (34) /* Left AGC Noise Gate Debounce */
+#define AIC31_P0_REG35              (35) /* Right AGC Noise Gate Debounce */
+#define AIC31_P0_REG36              (36) /* ADC Flag */
+#define AIC31_P0_REG37              (37) /* DAC Power and Output Driver Control */
+#define AIC31_P0_REG38              (38) /* High Power Output Driver Control*/
+#define AIC31_P0_REG40              (40) /* High Power Output Stage Control*/
+#define AIC31_P0_REG41              (41) /* DAC Output Switching Control */
+#define AIC31_P0_REG42              (42) /* Output Driver Pop Reduction */
+#define AIC31_P0_REG43              (43) /* Left DAC Digital Volume Control */
+#define AIC31_P0_REG44              (44) /* Right DAC Digital Volume Control */
+#define AIC31_P0_REG45              (45) /* LINE2L to HPLOUT Volume Control */
+#define AIC31_P0_REG46              (46) /* PGA_L to HPLOUT Volume Control */
+#define AIC31_P0_REG47              (47) /* DAC_L1 to HPLOUT Volume Control */
+#define AIC31_P0_REG48              (48) /* LINE2R to HPLOUT Volume Control */
+#define AIC31_P0_REG49              (49) /* PGA_R to HPLOUT Volume Control */
+#define AIC31_P0_REG50              (50) /* DAC_R1 to HPLOUT Volume Control */
+#define AIC31_P0_REG51              (51) /* HPLOUT Output Level Control */
+#define AIC31_P0_REG52              (52) /* LINE2L to HPLCOM Volume Control */
+#define AIC31_P0_REG53              (53) /* PGA_L to HPLCOM Volume Control */
+#define AIC31_P0_REG54              (54) /* DAC_L1 to HPLCOM Volume Control */
+#define AIC31_P0_REG55              (55) /* LINE2R to HPLCOM Volume Control */
+#define AIC31_P0_REG56              (56) /* PGA_R to HPLCOM Volume Control */
+#define AIC31_P0_REG57              (57) /* DAC_R1 to HPLCOM Volume Control */
+#define AIC31_P0_REG58              (58) /* HPLCOM Output Level Control */
+#define AIC31_P0_REG59              (59) /* LINE2L to HPROUT Volume Control */
+#define AIC31_P0_REG60              (60) /* PGA_L to HPROUT Volume Control */
+#define AIC31_P0_REG61              (61) /* DAC_L1 to HPROUT Volume Control */
+#define AIC31_P0_REG62              (62) /* LINE2R to HPROUT Volume Control */
+#define AIC31_P0_REG63              (63) /* PGA_R to HPROUT Volume Control  */
+#define AIC31_P0_REG64              (64) /* DAC_R1 to HPROUT Volume Control */
+#define AIC31_P0_REG65              (65) /* HPROUT Output Level Control */
+#define AIC31_P0_REG66              (66) /* LINE2L to HPRCOM Volume Control  */
+#define AIC31_P0_REG67              (67) /* PGA_L to HPRCOM Volume Control */
+#define AIC31_P0_REG68              (68) /* DAC_L1 to HPRCOM Volume Control */
+#define AIC31_P0_REG69              (69) /* LINE2R to HPRCOM Volume Control */
+#define AIC31_P0_REG70              (70) /* PGA_R to HPRCOM Volume Control */
+#define AIC31_P0_REG71              (71) /* DAC_R1 to HPRCOM Volume Control */
+#define AIC31_P0_REG72              (72) /* HPRCOM Output Level Control */
+#define AIC31_P0_REG73              (73) /* LINE2L to MONO_LOP/M Volume Control*/
+#define AIC31_P0_REG74              (74) /* PGA_L to MONO_LOP/M Volume Control */
+#define AIC31_P0_REG75              (75) /* DAC_L1 to MONO_LOP/M Volume Control */
+#define AIC31_P0_REG76              (76) /* LINE2R to MONO_LOP/M Volume Control */
+#define AIC31_P0_REG77              (77) /* PGA_R to MONO_LOP/M Volume Control */
+#define AIC31_P0_REG78              (78) /* DAC_R1 to MONO_LOP/M Volume Control */
+#define AIC31_P0_REG79              (79) /* MONO_LOP/M Output Level Control */
+#define AIC31_P0_REG80              (80) /* LINE2L to LEFT_LOP/M Volume Control */
+#define AIC31_P0_REG81              (81) /* PGA_L to LEFT_LOP/M Volume Control */
+#define AIC31_P0_REG82              (82) /* DAC_L1 to LEFT_LOP/M Volume Control */
+#define AIC31_P0_REG83              (83) /* LINE2R to LEFT_LOP/M Volume Control */
+#define AIC31_P0_REG84              (84) /* PGA_R to LEFT_LOP/M Volume Control */
+#define AIC31_P0_REG85              (85) /* DAC_R1 to LEFT_LOP/M Volume Control */
+#define AIC31_P0_REG86              (86) /* LEFT_LOP/M Output Level Control */
+#define AIC31_P0_REG87              (87) /* LINE2L to RIGHT_LOP/M Volume Control */
+#define AIC31_P0_REG88              (88) /* PGA_L to RIGHT_LOP/M Volume Control */
+#define AIC31_P0_REG89              (89) /* DAC_L1 to RIGHT_LOP/M Volume Control */
+#define AIC31_P0_REG90              (90) /* LINE2R to RIGHT_LOP/M Volume Control */
+#define AIC31_P0_REG91              (91) /* PGA_R to RIGHT_LOP/M Volume Control */
+#define AIC31_P0_REG92              (92) /* DAC_R1 to RIGHT_LOP/M Volume Control*/
+#define AIC31_P0_REG93              (93) /* RIGHT_LOP/M Output Level Control */
+#define AIC31_P0_REG94              (94) /* Module Power Status */
+#define AIC31_P0_REG95              (95) /**< O/P Driver Short Circuit Detection Status*/
+#define AIC31_P0_REG96              (96) /* Sticky Interrupt Flags */
+#define AIC31_P0_REG97              (97) /* Real-time Interrupt Flags  */
+#define AIC31_P0_REG98              (98) /* GPIO1 Control */
+#define AIC31_P0_REG99              (99) /* GPIO2 Control */
+#define AIC31_P0_REG100             (100)  /* Additional GPIO Control A */
+#define AIC31_P0_REG101             (101)  /* Additional GPIO Control B */
+#define AIC31_P0_REG102             (102)  /* Clock Generation Control */
 
-/* Word size to send/receive data. Word size <= Slot size */
-#define WORD_SIZE                             (16u)
+#define AIC31_RESET                 (0x80)
 
-/* Sampling rate used by the codec and the supplied audio_samples.h. */
-#define SAMPLING_RATE                         (AUDIO_SAMPLE_RATE)
-
-/* Number of channels, L & R */
-#define NUM_I2S_CHANNELS                      (2u) 
-
-/* Number of samples to be used per audio buffer */
-#define NUM_SAMPLES_PER_AUDIO_BUF             (2000u)
-
-/* Number of buffers used per tx/rx */
-#define NUM_BUF                               (3u)
-
-/* Number of linked parameter set used per tx/rx */
-#define NUM_PAR                               (2u)
-
-/* Specify where the parameter set starting is */
-#define PAR_ID_START                          (40u)
-
-/* Number of samples in loop buffer */
-#define NUM_SAMPLES_LOOP_BUF                  (10u)
-
-/* AIC3106 codec address */
-#define I2C_SLAVE_CODEC_AIC31                 (0x18u) 
-
-/* Interrupt channels to map in AINTC */
-#define INT_CHANNEL_I2C                       (2u)
-#define INT_CHANNEL_MCASP                     (2u)
-#define INT_CHANNEL_EDMACC                    (2u)
-
-/* McASP Serializer for Receive */
-#define MCASP_XSER_RX                         (14u)
-
-/* McASP Serializer for Transmit */
-#define MCASP_XSER_TX                         (13u)
-
-/*
-** Below Macros are calculated based on the above inputs
-*/
-#define NUM_TX_SERIALIZERS                    ((NUM_I2S_CHANNELS >> 1) \
-                                               + (NUM_I2S_CHANNELS & 0x01))
-#define NUM_RX_SERIALIZERS                    ((NUM_I2S_CHANNELS >> 1) \
-                                               + (NUM_I2S_CHANNELS & 0x01))
-#define I2S_SLOTS                             ((1 << NUM_I2S_CHANNELS) - 1)
-
-#define BYTES_PER_SAMPLE                      ((WORD_SIZE >> 3) \
-                                               * NUM_I2S_CHANNELS)
-
-#define AUDIO_BUF_SIZE                        (NUM_SAMPLES_PER_AUDIO_BUF \
-                                               * BYTES_PER_SAMPLE)
-
-#define TX_DMA_INT_ENABLE                     (EDMA3CC_OPT_TCC_SET(1) | (1 \
-                                               << EDMA3CC_OPT_TCINTEN_SHIFT))
-#define RX_DMA_INT_ENABLE                     (EDMA3CC_OPT_TCC_SET(0) | (1 \
-                                               << EDMA3CC_OPT_TCINTEN_SHIFT))
-
-#define PAR_RX_START                          (PAR_ID_START)
-#define PAR_TX_START                          (PAR_RX_START + NUM_PAR)
-
-/*
-** Definitions which are not configurable 
-*/
-#define SIZE_PARAMSET                         (32u)
-#define OPT_FIFO_WIDTH                        (0x02 << 8u)
-
-/******************************************************************************
-**                      INTERNAL FUNCTION PROTOTYPES
-******************************************************************************/
-static void McASPErrorIsr(void);
-static void McASPErrorIntSetup(void);
-static void AIC31I2SConfigure(void);
-static void McASPI2SConfigure(void);
-static void McASPTxDMAComplHandler(void);
-static void McASPRxDMAComplHandler(void);
-static void EDMA3CCComplIsr(void);
-static void I2SDataTxRxActivate(void);
-static void I2SDMAParamInit(void);
-static void ParamTxLoopJobSet(unsigned short parId);
-static void BufferTxDMAActivate(unsigned int txBuf, unsigned short numSamples,
-                                unsigned short parToUpdate, 
-                                unsigned short linkAddr);
-static void BufferRxDMAActivate(unsigned int rxBuf, unsigned short parId,
-                                unsigned short parLink);
-
-/******************************************************************************
-**                      INTERNAL VARIABLE DEFINITIONS
-******************************************************************************/
-static unsigned char loopBuf[NUM_SAMPLES_LOOP_BUF * BYTES_PER_SAMPLE] = {0};
-
-/*
-** Transmit buffers. If any new buffer is to be added, define it here and 
-** update the NUM_BUF.
-*/
-static unsigned char txBuf0[AUDIO_BUF_SIZE];
-static unsigned char txBuf1[AUDIO_BUF_SIZE];
-static unsigned char txBuf2[AUDIO_BUF_SIZE];
-
-/*
-** Receive buffers. If any new buffer is to be added, define it here and 
-** update the NUM_BUF.
-*/
-static unsigned char rxBuf0[AUDIO_BUF_SIZE];
-static unsigned char rxBuf1[AUDIO_BUF_SIZE];
-static unsigned char rxBuf2[AUDIO_BUF_SIZE];
-
-/*
-** Next buffer to receive data. The data will be received in this buffer.
-*/
-static volatile unsigned int nxtBufToRcv = 0;
-
-/*
-** The RX buffer which filled latest.
-*/
-static volatile unsigned int lastFullRxBuf = 0;
-
-/*
-** The offset of the paRAM ID, from the starting of the paRAM set.
-*/
-static volatile unsigned short parOffRcvd = 0;
-
-/*
-** The offset of the paRAM ID sent, from starting of the paRAM set.
-*/
-static volatile unsigned short parOffSent = 0;
-
-/*
-** The offset of the paRAM ID to be sent next, from starting of the paRAM set. 
-*/
-static volatile unsigned short parOffTxToSend = 0;
-
-/*
-** The transmit buffer which was sent last.
-*/
-static volatile unsigned int lastSentTxBuf = NUM_BUF - 1;
-
-/******************************************************************************
-**                      INTERNAL CONSTATNT DEFINITIONS
-******************************************************************************/
-/* Array of receive buffer pointers */
-static unsigned int const rxBufPtr[NUM_BUF] =
-       { 
-           (unsigned int) rxBuf0,
-           (unsigned int) rxBuf1,
-           (unsigned int) rxBuf2
-       };
-
-/* Array of transmit buffer pointers */
-static unsigned int const txBufPtr[NUM_BUF] =
-       { 
-           (unsigned int) txBuf0,
-           (unsigned int) txBuf1,
-           (unsigned int) txBuf2
-       };
-
-/*
-** Default paRAM for Transmit section. This will be transmitting from 
-** a loop buffer.
-*/
-static struct EDMA3CCPaRAMEntry const txDefaultPar = 
-       {
-           (unsigned int)(EDMA3CC_OPT_DAM  | (0x02 << 8u)), /* Opt field */
-           (unsigned int)loopBuf, /* source address */
-           (unsigned short)(BYTES_PER_SAMPLE), /* aCnt */
-           (unsigned short)(NUM_SAMPLES_LOOP_BUF), /* bCnt */ 
-           (unsigned int) SOC_MCASP_0_DATA_REGS, /* dest address */
-           (short) (BYTES_PER_SAMPLE), /* source bIdx */
-           (short)(0), /* dest bIdx */
-           (unsigned short)(PAR_TX_START * SIZE_PARAMSET), /* link address */
-           (unsigned short)(0), /* bCnt reload value */
-           (short)(0), /* source cIdx */
-           (short)(0), /* dest cIdx */
-           (unsigned short)1 /* cCnt */
-       };
-
-/*
-** Default paRAM for Receive section.  
-*/
-static struct EDMA3CCPaRAMEntry const rxDefaultPar =
-       {
-           (unsigned int)(EDMA3CC_OPT_SAM  | (0x02 << 8u)), /* Opt field */
-           (unsigned int)SOC_MCASP_0_DATA_REGS, /* source address */
-           (unsigned short)(BYTES_PER_SAMPLE), /* aCnt */
-           (unsigned short)(1), /* bCnt */
-           (unsigned int)rxBuf0, /* dest address */
-           (short) (0), /* source bIdx */
-           (short)(BYTES_PER_SAMPLE), /* dest bIdx */
-           (unsigned short)(PAR_RX_START * SIZE_PARAMSET), /* link address */
-           (unsigned short)(0), /* bCnt reload value */
-           (short)(0), /* source cIdx */
-           (short)(0), /* dest cIdx */
-           (unsigned short)1 /* cCnt */
-       };
+#define AIC31_SLOT_WIDTH_16         (0u << 4u)
+#define AIC31_SLOT_WIDTH_20         (1u << 4u)
+#define AIC31_SLOT_WIDTH_24         (2u << 4u)
+#define AIC31_SLOT_WIDTH_32         (3u << 4u)
 
 /******************************************************************************
 **                          FUNCTION DEFINITIONS
-******************************************************************************/
-/*
-** Assigns loop job for a parameter set
-*/
-static void ParamTxLoopJobSet(unsigned short parId)
+*******************************************************************************/
+/**
+ * \brief   Resets the AIC31 Codec
+ *
+ * \param   baseAddr     Base Address of the interface connected to AIC31
+ *
+ * \return  None.
+ *
+ **/
+void AIC31Reset(unsigned int baseAddr)
 {
-    EDMA3CCPaRAMEntry paramSet;
-    
-    memcpy(&paramSet, &txDefaultPar, SIZE_PARAMSET - 2);
-  
-    /* link the paRAM to itself */
-    paramSet.linkAddr = parId * SIZE_PARAMSET;
+    /* Select Page 0 */
+    CodecRegWrite(baseAddr, AIC31_P0_REG0, 0);    
 
-    EDMA3SetPaRAM(SOC_EDMA30CC_0_REGS, parId, &paramSet);
+    /* Reset the codec */
+    CodecRegWrite(baseAddr, AIC31_P0_REG1, AIC31_RESET);    
 }
 
-/*
-** Initializes the DMA parameters.
-** The RX basic paRAM set(channel) is 0 and TX basic paRAM set (channel) is 1.
-**
-** The RX paRAM set 0 will be initialized to receive data in the rx buffer 0.
-** The transfer completion interrupt will not be enabled for paRAM set 0;
-** paRAM set 0 will be linked to linked paRAM set starting (PAR_RX_START) of RX.
-** and further reception only happens via linked paRAM set. 
-** For example, if the PAR_RX_START value is 40, and the number of paRAMS is 2, 
-** reception paRAM set linking will be initialized as 0-->40-->41-->40
-**
-** The TX paRAM sets will be initialized to transmit from the loop buffer.
-** The size of the loop buffer can be configured.   
-** The transfer completion interrupt will not be enabled for paRAM set 1;
-** paRAM set 1 will be linked to linked paRAM set starting (PAR_TX_START) of TX.
-** All other paRAM sets will be linked to itself.
-** and further transmission only happens via linked paRAM set.
-** For example, if the PAR_RX_START value is 42, and the number of paRAMS is 2, 
-** So transmission paRAM set linking will be initialized as 1-->42-->42, 43->43. 
-*/
-static void I2SDMAParamInit(void)
+/**
+ * \brief   Configures the data format and slot width
+ *
+ * \param   baseAddr     Base Address of the interface connected to AIC31
+ * \param   dataType     Data type for the codec operation
+ * \param   slotWidth    Slot width in bits
+ * \param   dataOff      The number of clocks from the word clock rising edge
+ *                       to capture the actual data
+ *            dataType can take the values \n
+ *               AIC31_DATATYPE_I2S - for I2S mode \n
+ *               AIC31_DATATYPE_DSP - for DSP mode \n
+ *               AIC31_DATATYPE_RIGHTJ - for right aligned data \n
+ *               AIC31_DATATYPE_LEFTJ - for left aligned data \n
+ *
+ * \return  None.
+ *
+ **/
+void AIC31DataConfig(unsigned int baseAddr, unsigned char dataType, 
+                     unsigned char slotWidth, unsigned char dataOff)
 {
-    EDMA3CCPaRAMEntry paramSet;
-    int idx; 
- 
-    /* Initialize the 0th paRAM set for receive */ 
-    memcpy(&paramSet, &rxDefaultPar, SIZE_PARAMSET - 2);
+    unsigned char slot;
 
-    EDMA3SetPaRAM(SOC_EDMA30CC_0_REGS, EDMA3_CHA_MCASP0_RX, &paramSet);
-
-    /* further paramsets, enable interrupt */
-    paramSet.opt |= RX_DMA_INT_ENABLE; 
- 
-    for(idx = 0 ; idx < NUM_PAR; idx++)
+    switch(slotWidth)
     {
-        paramSet.destAddr = rxBufPtr[idx];
+        case 16:
+            slot = AIC31_SLOT_WIDTH_16;
+        break;
 
-        paramSet.linkAddr = (PAR_RX_START + ((idx + 1) % NUM_PAR)) 
-                             * (SIZE_PARAMSET);        
+        case 20:
+            slot = AIC31_SLOT_WIDTH_20;
+        break;
 
-        paramSet.bCnt =  NUM_SAMPLES_PER_AUDIO_BUF;
+        case 24:
+            slot = AIC31_SLOT_WIDTH_24;
+        break;
 
-        /* 
-        ** for the first linked paRAM set, start receiving the second
-        ** sample only since the first sample is already received in
-        ** rx buffer 0 itself.
-        */
-        if( 0 == idx)
-        {
-            paramSet.destAddr += BYTES_PER_SAMPLE;
-            paramSet.bCnt -= BYTES_PER_SAMPLE;
-        }
+        case 32:
+            slot = AIC31_SLOT_WIDTH_32;
+        break;
 
-        EDMA3SetPaRAM(SOC_EDMA30CC_0_REGS, (PAR_RX_START + idx), &paramSet);
-    } 
-
-    /* Initialize the required variables for reception */
-    nxtBufToRcv = idx % NUM_BUF;
-    lastFullRxBuf = NUM_BUF - 1;
-    parOffRcvd = 0;
-
-    /* Initialize the 1st paRAM set for transmit */ 
-    memcpy(&paramSet, &txDefaultPar, SIZE_PARAMSET);
-
-    EDMA3SetPaRAM(SOC_EDMA30CC_0_REGS, EDMA3_CHA_MCASP0_TX, &paramSet);
-
-    /* rest of the params, enable loop job */
-    for(idx = 0 ; idx < NUM_PAR; idx++)
-    {
-        ParamTxLoopJobSet(PAR_TX_START + idx);
+        default:
+            slot = AIC31_SLOT_WIDTH_16;
+        break;
     }
- 
-    /* Initialize the variables for transmit */
-    parOffSent = 0;
-    lastSentTxBuf = NUM_BUF - 1; 
-}
 
-/*
-** Function to configure the codec for I2S mode
-*/
-static void AIC31I2SConfigure(void)
-{
-    volatile unsigned int delay = 0xFFF;
 
-    AIC31Reset(SOC_I2C_0_REGS);
-    while(delay--);
-
-    /* Configure the data format and sampling rate */
-    AIC31DataConfig(SOC_I2C_0_REGS, AIC31_DATATYPE_I2S, SLOT_SIZE, 0);
-    AIC31SampleRateConfig(SOC_I2C_0_REGS, AIC31_MODE_BOTH, SAMPLING_RATE);
-
-    /* Initialize both ADC and DAC */
-    AIC31ADCInit(SOC_I2C_0_REGS);
-    AIC31DACInit(SOC_I2C_0_REGS);
-}
-
-/*
-** Configures the McASP Transmit Section in I2S mode.
-*/
-static void McASPI2SConfigure(void)
-{
-    McASPRxReset(SOC_MCASP_0_CTRL_REGS);
-    McASPTxReset(SOC_MCASP_0_CTRL_REGS);
-
-    /* Enable the FIFOs for DMA transfer */
-    McASPReadFifoEnable(SOC_MCASP_0_FIFO_REGS, 1, 1);
-    McASPWriteFifoEnable(SOC_MCASP_0_FIFO_REGS, 1, 1);
-
-    /* Set I2S format in the transmitter/receiver format units */
-    McASPRxFmtI2SSet(SOC_MCASP_0_CTRL_REGS, WORD_SIZE, SLOT_SIZE,
-                     MCASP_RX_MODE_DMA);
-    McASPTxFmtI2SSet(SOC_MCASP_0_CTRL_REGS, WORD_SIZE, SLOT_SIZE,
-                     MCASP_TX_MODE_DMA);
-
-    /* Configure the frame sync. I2S shall work in TDM format with 2 slots */
-    McASPRxFrameSyncCfg(SOC_MCASP_0_CTRL_REGS, 2, MCASP_RX_FS_WIDTH_WORD, 
-                        MCASP_RX_FS_EXT_BEGIN_ON_RIS_EDGE);
-    McASPTxFrameSyncCfg(SOC_MCASP_0_CTRL_REGS, 2, MCASP_TX_FS_WIDTH_WORD, 
-                        MCASP_TX_FS_EXT_BEGIN_ON_RIS_EDGE);
-
-    /* configure the clock for receiver */
-    McASPRxClkCfg(SOC_MCASP_0_CTRL_REGS, MCASP_RX_CLK_EXTERNAL, 0, 0);
-    McASPRxClkPolaritySet(SOC_MCASP_0_CTRL_REGS, MCASP_RX_CLK_POL_RIS_EDGE); 
-    McASPRxClkCheckConfig(SOC_MCASP_0_CTRL_REGS, MCASP_RX_CLKCHCK_DIV32,
-                          0x00, 0xFF);
-
-    /* configure the clock for transmitter */
-    /* Configure the clock for transmitter */
-/* Keep external clocking for now; do not change clock source. */
-    McASPTxClkCfg(SOC_MCASP_0_CTRL_REGS,
-                MCASP_TX_CLK_EXTERNAL, 0, 0);
-    McASPTxClkPolaritySet(SOC_MCASP_0_CTRL_REGS,
-                        MCASP_TX_CLK_POL_FALL_EDGE);
-    McASPTxClkCheckConfig(SOC_MCASP_0_CTRL_REGS, MCASP_TX_CLKCHCK_DIV32, 0x00, 0xFF);
- 
-    /* Enable synchronization of RX and TX sections  */  
-    McASPTxRxClkSyncEnable(SOC_MCASP_0_CTRL_REGS);
-
-    /* Enable the transmitter/receiver slots. I2S uses 2 slots */
-    McASPRxTimeSlotSet(SOC_MCASP_0_CTRL_REGS, I2S_SLOTS);
-    McASPTxTimeSlotSet(SOC_MCASP_0_CTRL_REGS, I2S_SLOTS);
-
-    /*
-    ** Set the serializers, Currently only one serializer is set as
-    ** transmitter and one serializer as receiver.
-    */
-    McASPSerializerRxSet(SOC_MCASP_0_CTRL_REGS, MCASP_XSER_RX);
-    McASPSerializerTxSet(SOC_MCASP_0_CTRL_REGS, MCASP_XSER_TX);
-
-    /*
-    ** Configure the McASP pins 
-    ** Input - Frame Sync, Clock and Serializer Rx
-    ** Output - Serializer Tx is connected to the input of the codec 
-    */
-    McASPPinMcASPSet(SOC_MCASP_0_CTRL_REGS, 0xFFFFFFFF);
-    McASPPinDirOutputSet(SOC_MCASP_0_CTRL_REGS, MCASP_PIN_AXR(MCASP_XSER_TX));
-    McASPPinDirInputSet(SOC_MCASP_0_CTRL_REGS, MCASP_PIN_AFSX 
-                                               | MCASP_PIN_ACLKX
-                                               | MCASP_PIN_AFSR
-                                               | MCASP_PIN_ACLKR
-                                               | MCASP_PIN_AXR(MCASP_XSER_RX));
-
-    /* Enable error interrupts for McASP */
-    McASPTxIntEnable(SOC_MCASP_0_CTRL_REGS, MCASP_TX_DMAERROR 
-                                            | MCASP_TX_CLKFAIL 
-                                            | MCASP_TX_SYNCERROR
-                                            | MCASP_TX_UNDERRUN);
-
-    McASPRxIntEnable(SOC_MCASP_0_CTRL_REGS, MCASP_RX_DMAERROR 
-                                            | MCASP_RX_CLKFAIL
-                                            | MCASP_RX_SYNCERROR 
-                                            | MCASP_RX_OVERRUN);
-}
-
-/*
-** Sets up the interrupts for EDMA in AINTC
-*/
-static void EDMA3IntSetup(void)
-{
-#ifdef _TMS320C6X
-	IntRegister(C674X_MASK_INT5, EDMA3CCComplIsr);
-	IntEventMap(C674X_MASK_INT5, SYS_INT_EDMA3_0_CC0_INT1);
-	IntEnable(C674X_MASK_INT5);
-#else
-    IntRegister(SYS_INT_CCINT0, EDMA3CCComplIsr);
-    IntChannelSet(SYS_INT_CCINT0, INT_CHANNEL_EDMACC); 
-    IntSystemEnable(SYS_INT_CCINT0);
-#endif
-}
-
-/*
-** Sets up the error interrupts for McASP in AINTC
-*/
-static void McASPErrorIntSetup(void)
-{
-#ifdef _TMS320C6X
-	IntRegister(C674X_MASK_INT6, McASPErrorIsr);
-	IntEventMap(C674X_MASK_INT6, SYS_INT_MCASP0_INT);
-	IntEnable(C674X_MASK_INT6);
-#else
-    /* Register the error ISR for McASP */
-    IntRegister(SYS_INT_MCASPINT, McASPErrorIsr);
-
-    IntChannelSet(SYS_INT_MCASPINT, INT_CHANNEL_MCASP);
-    IntSystemEnable(SYS_INT_MCASPINT);
-#endif
-}
-
-/*
-** Activates the data transmission/reception
-** The DMA parameters shall be ready before calling this function.
-*/
-static void I2SDataTxRxActivate(void)
-{
-    /* Start the clocks */
-    McASPRxClkStart(SOC_MCASP_0_CTRL_REGS, MCASP_RX_CLK_EXTERNAL);
-    McASPTxClkStart(SOC_MCASP_0_CTRL_REGS, MCASP_TX_CLK_EXTERNAL);
-
-    /* Enable EDMA for the transfer */
-    EDMA3EnableTransfer(SOC_EDMA30CC_0_REGS, EDMA3_CHA_MCASP0_RX,
-                        EDMA3_TRIG_MODE_EVENT);
-    EDMA3EnableTransfer(SOC_EDMA30CC_0_REGS, 
-                        EDMA3_CHA_MCASP0_TX, EDMA3_TRIG_MODE_EVENT);
-
-    /* Activate the  serializers */
-    McASPRxSerActivate(SOC_MCASP_0_CTRL_REGS);
-    McASPTxSerActivate(SOC_MCASP_0_CTRL_REGS);
-
-    /* make sure that the XDATA bit is cleared to zero */
-    while(McASPTxStatusGet(SOC_MCASP_0_CTRL_REGS) & MCASP_TX_STAT_DATAREADY);
-
-    /* Activate the state machines */
-    McASPRxEnable(SOC_MCASP_0_CTRL_REGS);
-    McASPTxEnable(SOC_MCASP_0_CTRL_REGS);
-}
-
-/*
-** Activates the DMA transfer for a parameterset from the given buffer.
-*/
-static void BufferTxDMAActivate(unsigned int txBuf, unsigned short numSamples,
-                         unsigned short parId, unsigned short linkPar)
-{
-    EDMA3CCPaRAMEntry paramSet;
-
-    /* Copy the default paramset */
-    memcpy(&paramSet, &txDefaultPar, SIZE_PARAMSET - 2);
-    
-    /* Enable completion interrupt */
-    paramSet.opt |= TX_DMA_INT_ENABLE;
-    paramSet.srcAddr =  txBufPtr[txBuf];
-    paramSet.linkAddr = linkPar * SIZE_PARAMSET;  
-    paramSet.bCnt = numSamples;
-
-    EDMA3SetPaRAM(SOC_EDMA30CC_0_REGS, parId, &paramSet);
-}
-
-/*
-** The main function. Application starts here.
-*/
-int main(void)
-{
-    unsigned short parToSend;
-    unsigned short parToLink;
-
-    /* Set up pin mux for I2C module 0 */
-    I2CPinMuxSetup(0);
-    McASPPinMuxSetup();
-
-    /* Power up the McASP module */
-    PSCModuleControl(SOC_PSC_1_REGS, HW_PSC_MCASP0, PSC_POWERDOMAIN_ALWAYS_ON,
-		     PSC_MDCTL_NEXT_ENABLE);
-
-    /* Power up EDMA3CC_0 and EDMA3TC_0 */
-    PSCModuleControl(SOC_PSC_0_REGS, HW_PSC_CC0, PSC_POWERDOMAIN_ALWAYS_ON,
-		     PSC_MDCTL_NEXT_ENABLE);
-    PSCModuleControl(SOC_PSC_0_REGS, HW_PSC_TC0, PSC_POWERDOMAIN_ALWAYS_ON,
-		     PSC_MDCTL_NEXT_ENABLE);
-
-#ifdef _TMS320C6X
-    // Initialize the DSP interrupt controller
-    IntDSPINTCInit();
-#else
-    /* Initialize the ARM Interrupt Controller.*/
-    IntAINTCInit();
-#endif
-
-    /* Initialize the I2C 0 interface for the codec AIC31 */
-    I2CCodecIfInit(SOC_I2C_0_REGS, INT_CHANNEL_I2C, I2C_SLAVE_CODEC_AIC31);
-
-    EDMA3Init(SOC_EDMA30CC_0_REGS, 0);
-    EDMA3IntSetup(); 
-
-    McASPErrorIntSetup();
+    /* Write the data type and  slot width */
+    CodecRegWrite(baseAddr, AIC31_P0_REG9, (dataType | slot));
   
-#ifdef _TMS320C6X
-    IntGlobalEnable();
-#else
-    /* Enable the interrupts generation at global level */ 
-    IntMasterIRQEnable();
-    IntGlobalEnable();
-    IntIRQEnable();
-#endif
+    /* valid data after dataOff number of clock cycles */
+    CodecRegWrite(baseAddr, AIC31_P0_REG10, dataOff);
+}
 
-    /*
-    ** Request EDMA channels. Channel 0 is used for reception and
-    ** Channel 1 is used for transmission
-    */
-    EDMA3RequestChannel(SOC_EDMA30CC_0_REGS, EDMA3_CHANNEL_TYPE_DMA,
-                        EDMA3_CHA_MCASP0_TX, EDMA3_CHA_MCASP0_TX, 0);
-    EDMA3RequestChannel(SOC_EDMA30CC_0_REGS, EDMA3_CHANNEL_TYPE_DMA,
-                        EDMA3_CHA_MCASP0_RX, EDMA3_CHA_MCASP0_RX, 0);
+/**
+ * \brief   Configures the data format and slot width
+ *
+ * \param   baseAddr     Base Address of the interface connected to AIC31
+ * \param   mode         section of the codec (ADC/DAC) for which the sample
+ *                       rate needs to be configured
+ * \param   sampleRate   Sample rate in samples per second
+ *              mode can take the values \n
+ *                AIC31_MODE_ADC - for selecting ADC \n
+ *                AIC31_MODE_DAC - for selecting DAC \n
+ *                AIC31_MODE_BOTH - for both ADC and DAC \n
+ *              sampleRate can be \n
+ *                 8000, 11025, 16000, 22050, 24000, 32000, 44100, 
+ *                 48000 or  96000. \n
+ *          The fs is derived from the equation 
+ *                fs = (PLL_IN * [pllJval.pllDval] * pllRval) /(2048 * pllPval). 
+ *          So the values are set for PLL_IN = 24576 kHz 
+ *
+ * \return  None.
+ *
+ **/
 
-    /* Initialize the DMA parameters */
-    I2SDMAParamInit();
+void AIC31SampleRateConfig(unsigned int baseAddr,
+                           unsigned int mode,
+                           unsigned int sampleRate)
+{
+    unsigned char fs;
+    unsigned char ref = 0x0A;
+    unsigned char temp;
+    unsigned char pllPval = 4;
+    unsigned char pllRval = 1;
+    unsigned char pllJval = 16;
+    unsigned short pllDval = 0;
 
-    /* Configure the Codec for I2S mode */
-    AIC31I2SConfigure();
-
-    /* Configure the McASP for I2S */
-    McASPI2SConfigure();
-  
-    /* Initialize DSP filter state before audio playback. */
-    dsp_init();
-
-    /* Activate the audio transmission and reception */
-    I2SDataTxRxActivate();
-   
-    /*
-    ** Looop forever. if a new buffer is received, the lastFullRxBuf will be 
-    ** updated in the rx completion ISR. if it is not the lastSentTxBuf, 
-    ** buffer is to be sent. This has to be mapped to proper paRAM set.
-    */
-    /*
-     * Two-pass playback:
-     * Pass 0: play the supplied PCM exactly as stored.
-     * Pass 1: replay the same PCM through the voice FIR filter.
-     * Then transmit silence. Do not add synthetic noise here: the source
-     * recording is already noisy, and this keeps playback deterministic.
-     */
+    switch (sampleRate)
     {
-        unsigned int audioPos = 0u;
-        unsigned int pass = 0u; /* 0 = original, 1 = FIR-filtered, 2 = done */
-        unsigned int gapRemaining = 0u;
-        const unsigned int gapSamples = AUDIO_SAMPLE_RATE; /* 1 second */
+        case 8000:
+            fs = 0xAA;
+            break;
 
-        while (1)
-        {
-            if (lastFullRxBuf != lastSentTxBuf)
-            {
-                unsigned int i;
-                short *txSamples;
+        case 11025:
+            fs = 0x66;
+            ref = 0x8A;
+            pllJval = 14;
+            pllDval = 7000;
+            break;
 
-                parToSend = PAR_TX_START + (parOffTxToSend % NUM_PAR);
-                parOffTxToSend = (parOffTxToSend + 1u) % NUM_PAR;
-                parToLink = PAR_TX_START + parOffTxToSend;
+        case 16000:a
+            fs = 0x44;
+            break;
 
-                lastSentTxBuf = (lastSentTxBuf + 1u) % NUM_BUF;
-                txSamples = (short *)txBufPtr[lastSentTxBuf];
+        case 22050:
+            fs = 0x22;
+            ref = 0x8A;
+            pllJval = 14;
+            pllDval = 7000;
+            break;
 
-                for (i = 0u; i < NUM_SAMPLES_PER_AUDIO_BUF; ++i)
-                {
-                    float x = 0.0f;
-                    float y = 0.0f;
-                    short s;
+        case 24000:
+            fs = 0x22;
+            break;
 
-                    if (pass == 0u)
-                    {
-                        /* Pass 1: play the original noisy recording. */
-                        if (audioPos < AUDIO_SAMPLE_COUNT)
-                        {
-                            x = (float)audio_samples[audioPos++] / 32768.0f;
-                            y = x;
-                        }
-                        else
-                        {
-                            pass = 1u;
-                            audioPos = 0u;
-                            gapRemaining = gapSamples;
-                            y = 0.0f;
-                        }
-                    }
-                    else if (pass == 1u)
-                    {
-                        /* One second of silence separates the two playbacks. */
-                        if (gapRemaining > 0u)
-                        {
-                            --gapRemaining;
-                            y = 0.0f;
-                        }
-                        else
-                        {
-                            dsp_init();
-                            pass = 2u;
-                        }
-                    }
+        case 32000:
+            fs = 0x11;
+            break;
 
-                    if (pass == 2u)
-                    {
-                        /* Pass 2: play the same recording through the voice FIR. */
-                        if (audioPos < AUDIO_SAMPLE_COUNT)
-                        {
-                            x = (float)audio_samples[audioPos++] / 32768.0f;
-                            y = dsp_voice_filter(x);
-                        }
-                        else
-                        {
-                            /* Both playbacks are complete: output silence. */
-                            y = 0.0f;
-                        }
-                    }
+        case 44100:
+            fs = 0x00;
+            ref = 0x8A;
+            pllJval = 14;
+            pllDval = 7000;
+            break;
 
-                    if (y > 0.999969f) y = 0.999969f;
-                    if (y < -1.0f) y = -1.0f;
-                    s = (short)(y * 32767.0f);
+        case 48000:
+            fs = 0x00;
+            break;
 
-                    /* Mono PCM is duplicated into the left and right I2S slots. */
-                    txSamples[2u * i] = s;
-                    txSamples[2u * i + 1u] = s;
-                }
+        case 96000:
+            fs = 0x00;
+            ref = 0x6A;
+            break;
 
-                BufferTxDMAActivate(lastSentTxBuf,
-                                    NUM_SAMPLES_PER_AUDIO_BUF,
-                                    (unsigned short)parToSend,
-                                    (unsigned short)parToLink);
-            }
-        }
+        default:
+            /* Reject unsupported rates instead of silently
+               configuring the codec for 48 kHz. */
+            return;
     }
+
+    temp = (unsigned char)(mode & fs);
+    CodecRegWrite(baseAddr, 2, temp);
+
+    CodecRegWrite(baseAddr, 3,
+                  (unsigned char)(0x80 | pllPval));
+    CodecRegWrite(baseAddr, 102, 0x08);
+    CodecRegBitClr(baseAddr, 101, 0x01);
+    CodecRegWrite(baseAddr, 98, 0x20);
+
+    temp = (unsigned char)(pllJval << 2);
+    CodecRegWrite(baseAddr, 4, temp);
+    CodecRegWrite(baseAddr, 5,
+                  (unsigned char)((pllDval >> 6) & 0xFF));
+    CodecRegWrite(baseAddr, 6,
+                  (unsigned char)((pllDval & 0x3F) << 2));
+    CodecRegWrite(baseAddr, 11, pllRval);
+
+    /* Codec is clock master; McASP receives external clocks. */
+    CodecRegWrite(baseAddr, 8, 0xD0);
+    CodecRegWrite(baseAddr, 7, ref);
 }
 
-/*
-** Activates the DMA transfer for a parameter set from the given buffer.
-*/
-static void BufferRxDMAActivate(unsigned int rxBuf, unsigned short parId,
-                                unsigned short parLink)
+
+/**
+ * \brief   Initializes the ADC section of the AIC31 Codec
+ *
+ * \param   baseAddr     Base Address of the interface connected to AIC31
+ *
+ * \return  None.
+ *
+ **/
+void AIC31ADCInit(unsigned int baseAddr) 
 {
-    EDMA3CCPaRAMEntry paramSet;
+    /* enable the programmable PGA for left and right ADC  */
+    CodecRegWrite(baseAddr, AIC31_P0_REG15, 0x00);
+    CodecRegWrite(baseAddr, AIC31_P0_REG16, 0x00);
 
-    /* Copy the default paramset */
-    memcpy(&paramSet, &rxDefaultPar, SIZE_PARAMSET - 2);
+    /* Connect MIC3L is  to the left ADC PGA */
+    CodecRegWrite(baseAddr, AIC31_P0_REG17, 0x00);
 
-    /* Enable completion interrupt */
-    paramSet.opt |= RX_DMA_INT_ENABLE;
-    paramSet.destAddr =  rxBufPtr[rxBuf];
-    paramSet.bCnt =  NUM_SAMPLES_PER_AUDIO_BUF;
-    paramSet.linkAddr = parLink * SIZE_PARAMSET ;
+    /* Connect MIC3R is  to the right ADC PGA */
+    CodecRegWrite(baseAddr, AIC31_P0_REG18, 0x00);
 
-    EDMA3SetPaRAM(SOC_EDMA30CC_0_REGS, parId, &paramSet);
+    /* Power MICBIAS output to 2.5V */
+    CodecRegWrite(baseAddr, AIC31_P0_REG25, 0x80);
+
+    /* power on the Line L1R */
+    CodecRegWrite(baseAddr, AIC31_P0_REG19, 0x04);
+
+    /* power on the Line LIL */
+    CodecRegWrite(baseAddr, AIC31_P0_REG22, 0x04);
 }
 
-/*
-** This function will be called once receive DMA is completed
-*/
-static void McASPRxDMAComplHandler(void)
+/**
+ * \brief   Initializes the DAC section of the AIC31 Codec
+ *
+ * \param   baseAddr     Base Address of the interface connected to AIC31
+ *
+ * \return  None.
+ *
+ **/
+void AIC31DACInit(unsigned int baseAddr)
 {
-    unsigned short nxtParToUpdate;
+    /* power up the left and right DACs */
+    CodecRegWrite(baseAddr, AIC31_P0_REG37, 0xE0);
 
-    /*
-    ** Update lastFullRxBuf to indicate a new buffer reception
-    ** is completed.
-    */
-    lastFullRxBuf = (lastFullRxBuf + 1) % NUM_BUF;
-    nxtParToUpdate =  PAR_RX_START + parOffRcvd;  
-    parOffRcvd = (parOffRcvd + 1) % NUM_PAR;
- 
-    /*
-    ** Update the DMA parameters for the received buffer to receive
-    ** further data in proper buffer
-    */
-    BufferRxDMAActivate(nxtBufToRcv, nxtParToUpdate,
-                        PAR_RX_START + parOffRcvd);
-    
-    /* update the next buffer to receive data */ 
-    nxtBufToRcv = (nxtBufToRcv + 1) % NUM_BUF;
-}
+    /* select the DAC L1 R1 Paths */
+    CodecRegWrite(baseAddr, AIC31_P0_REG41, 0x02);
+    CodecRegWrite(baseAddr, AIC31_P0_REG42, 0x6C);
 
-/*
-** This function will be called once transmit DMA is completed
-*/
-static void McASPTxDMAComplHandler(void)
-{
-    ParamTxLoopJobSet((unsigned short)(PAR_TX_START + parOffSent));
 
-    parOffSent = (parOffSent + 1) % NUM_PAR;
-}
+    /* DAC L to HPLOUT Is connected */
+    CodecRegWrite(baseAddr, AIC31_P0_REG47, 0x80);
+    CodecRegWrite(baseAddr, AIC31_P0_REG51, 0x09);
 
-/*
-** EDMA transfer completion ISR
-*/
-static void EDMA3CCComplIsr(void) 
-{ 
-#ifdef _TMS320C6X
-	IntEventClear(SYS_INT_EDMA3_0_CC0_INT1);
-#else
-    IntSystemStatusClear(SYS_INT_CCINT0);
-#endif
+    /* DAC R to HPROUT is connected */
+    CodecRegWrite(baseAddr, AIC31_P0_REG64, 0x80);
+    CodecRegWrite(baseAddr, AIC31_P0_REG65, 0x09);
 
-    /* Check if receive DMA completed */
-    if(EDMA3GetIntrStatus(SOC_EDMA30CC_0_REGS) & (1 << EDMA3_CHA_MCASP0_RX)) 
-    { 
-        /* Clear the interrupt status for the 0th channel */
-        EDMA3ClrIntr(SOC_EDMA30CC_0_REGS, EDMA3_CHA_MCASP0_RX); 
-        McASPRxDMAComplHandler();
-    }
-    
-    /* Check if transmit DMA completed */
-    if(EDMA3GetIntrStatus(SOC_EDMA30CC_0_REGS) & (1 << EDMA3_CHA_MCASP0_TX)) 
-    { 
-        /* Clear the interrupt status for the first channel */
-        EDMA3ClrIntr(SOC_EDMA30CC_0_REGS, EDMA3_CHA_MCASP0_TX); 
-        McASPTxDMAComplHandler();
-    }
-}
+    /* DACL1 connected to LINE1 LOUT */
+    CodecRegWrite(baseAddr, AIC31_P0_REG82, 0x80);
+    CodecRegWrite(baseAddr, AIC31_P0_REG86, 0x09);
 
-/*
-** Error ISR for McASP
-*/
-static void McASPErrorIsr(void)
-{
-#ifdef _TMS320C6X
-	IntEventClear(SYS_INT_MCASP0_INT);
-#else
-    IntSystemStatusClear(SYS_INT_MCASPINT);
-#endif
+    /* DACR1 connected to LINE1 ROUT */
+    CodecRegWrite(baseAddr, AIC31_P0_REG92, 0x80);
+    CodecRegWrite(baseAddr, AIC31_P0_REG93, 0x09);
 
-    ; /* Perform any error handling here.*/
+    /* unmute the DAC */
+    CodecRegWrite(baseAddr, AIC31_P0_REG43, 0x00);
+    CodecRegWrite(baseAddr, AIC31_P0_REG44, 0x00);
 }
 
 /***************************** End Of File ***********************************/

@@ -66,7 +66,7 @@
 #define WORD_SIZE                             (16u)
 
 /* Sampling rate used by the codec and the supplied audio_samples.h. */
-#define SAMPLING_RATE                         16000u
+#define SAMPLING_RATE                         (AUDIO_SAMPLE_RATE)
 
 /* Number of channels, L & R */
 #define NUM_I2S_CHANNELS                      (2u) 
@@ -616,7 +616,9 @@ int main(void)
      */
     {
         unsigned int audioPos = 0u;
-        unsigned int pass = 0u; /* 0 = original, 1 = FIR-filtered */
+        unsigned int pass = 0u; /* 0 = original, 1 = FIR-filtered, 2 = done */
+        unsigned int gapRemaining = 0u;
+        const unsigned int gapSamples = AUDIO_SAMPLE_RATE; /* 1 second */
 
         while (1)
         {
@@ -638,31 +640,57 @@ int main(void)
                     float y = 0.0f;
                     short s;
 
-                    if (audioPos < AUDIO_SAMPLE_COUNT)
+                    if (pass == 0u)
                     {
-                        x = (float)audio_samples[audioPos++] / 32768.0f;
-                        y = (pass == 0u) ? x : dsp_voice_filter(x);
+                        /* Pass 1: play the original noisy recording. */
+                        if (audioPos < AUDIO_SAMPLE_COUNT)
+                        {
+                            x = (float)audio_samples[audioPos++] / 32768.0f;
+                            y = x;
+                        }
+                        else
+                        {
+                            pass = 1u;
+                            audioPos = 0u;
+                            gapRemaining = gapSamples;
+                            y = 0.0f;
+                        }
                     }
-                    else if (pass == 0u)
+                    else if (pass == 1u)
                     {
-                        /* Start the second pass at the next output sample. */
-                        pass = 1u;
-                        audioPos = 0u;
-                        dsp_init();
-                        x = (float)audio_samples[audioPos++] / 32768.0f;
-                        y = dsp_voice_filter(x);
+                        /* One second of silence separates the two playbacks. */
+                        if (gapRemaining > 0u)
+                        {
+                            --gapRemaining;
+                            y = 0.0f;
+                        }
+                        else
+                        {
+                            dsp_init();
+                            pass = 2u;
+                        }
                     }
-                    else
+
+                    if (pass == 2u)
                     {
-                        /* Both passes are complete: output digital silence. */
-                        y = 0.0f;
+                        /* Pass 2: play the same recording through the voice FIR. */
+                        if (audioPos < AUDIO_SAMPLE_COUNT)
+                        {
+                            x = (float)audio_samples[audioPos++] / 32768.0f;
+                            y = dsp_voice_filter(x);
+                        }
+                        else
+                        {
+                            /* Both playbacks are complete: output silence. */
+                            y = 0.0f;
+                        }
                     }
 
                     if (y > 0.999969f) y = 0.999969f;
                     if (y < -1.0f) y = -1.0f;
                     s = (short)(y * 32767.0f);
 
-                    /* Duplicate mono PCM to left and right output channels. */
+                    /* Mono PCM is duplicated into the left and right I2S slots. */
                     txSamples[2u * i] = s;
                     txSamples[2u * i + 1u] = s;
                 }
