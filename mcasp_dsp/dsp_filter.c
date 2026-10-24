@@ -13,7 +13,7 @@ typedef struct {
     int   pos;
 } fir_t;
 
-static fir_t voice_fir;     /* 300-3400 Hz, the actual filter               */
+st  atic fir_t voice_fir;     /* 300-3400 Hz, the actual filter               */
 static fir_t noise_fir;     /* 4500-7000 Hz, shapes the test noise          */
 
 static uint32_t rng_state = 2463534242u;
