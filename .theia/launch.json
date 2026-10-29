@@ -1,27 +1,4 @@
 {
     "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "mcasp_dsp",
-            "type": "ccs-debug",
-            "request": "launch",
-            "projectInfo": {
-                "name": "mcasp_dsp",
-                "resourceId": "/mcasp_dsp"
-            },
-            "connections": [
-                {
-                    "name": "Texas Instruments XDS100v2 USB Debug Probe",
-                    "cores": [
-                        {
-                            "name": "C674X_0",
-                            "debuggerSettings": {
-                                "data": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<PropertyValues/>\n"
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
+    "configurations": []
 }
