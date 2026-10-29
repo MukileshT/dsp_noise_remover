@@ -1,5 +1,4 @@
 
-/* C6748 LCDK linker command file */
 
 -stack 0x4000
 -heap  0x4000

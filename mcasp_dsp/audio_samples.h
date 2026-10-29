@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-/* Mono signed 16-bit PCM, 16 kHz. */
+
 #define AUDIO_SAMPLE_RATE 16000u
 #define AUDIO_SAMPLE_COUNT 130768u
 

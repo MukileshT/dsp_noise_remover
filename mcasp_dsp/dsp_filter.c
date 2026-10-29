@@ -3,14 +3,13 @@
 #include "dsp_filter.h"
 
 #define PI_D  3.14159265358979323846
-#define M     (NTAPS - 1)      /* 128 */
-#define HALF  (M / 2)          /* 64: center tap index */
+#define M     (NTAPS - 1)
+#define HALF  (M / 2)
 
-static float h[HALF + 1];      /* h[0..64], symmetric: h[M-i] == h[i] */
-static float buf[2 * NTAPS];   /* duplicated circular buffer */
+static float h[HALF + 1];
+static float buf[2 * NTAPS];
 static int   pos;
 
-/* Hamming-windowed sinc low-pass, unity gain at DC. */
 void dsp_init(void)
 {
     const double wc = 2.0 * PI_D * CUTOFF_HZ / FS_HZ;
@@ -31,7 +30,6 @@ void dsp_init(void)
     pos = 0;
 }
 
-/* Force optimization for this function even if the project is built -O0. */
 #ifdef _TMS320C6X
 #pragma FUNCTION_OPTIONS(dsp_voice_filter, "-o3")
 #endif
@@ -47,7 +45,6 @@ float dsp_voice_filter(float x)
     buf[pos + NTAPS] = x;
     p = &buf[pos];
 
-    /* Symmetric FIR: 64 pair-multiplies instead of 129, two accumulators. */
     #pragma MUST_ITERATE(32, 32)
     for (i = 0; i < HALF; i += 2)
     {

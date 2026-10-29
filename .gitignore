@@ -1,0 +1,27 @@
+# Code Composer Studio / TI build output
+mcasp_dsp/Debug/
+mcasp_dsp/Release/
+mcasp_dsp/*.out
+mcasp_dsp/*.map
+mcasp_dsp/*.obj
+mcasp_dsp/*.d
+mcasp_dsp/*.tmp
+
+# Generated logs and linker/build reports
+mcasp_dsp/*.log
+mcasp_dsp/*_linkInfo.xml
+mcasp_dsp/AIGgen_log.txt
+
+# Python cache and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
